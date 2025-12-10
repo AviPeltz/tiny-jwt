@@ -2,6 +2,24 @@
 
 A minimal JWT implementation for learning purposes. Written in TypeScript with no external dependencies - just Node.js crypto.
 
+## 🎓 Build It Yourself
+
+**Want to really understand JWTs?** Don't just read the code—build it yourself!
+
+See **[PROJECT.md](PROJECT.md)** for a guided, hands-on tutorial that walks you through implementing your own JWT library from scratch. Includes:
+- Step-by-step exercises with hints
+- Test suite to verify your implementation
+- Security challenges to try breaking your code
+- "Think About It" questions to deepen understanding
+
+```bash
+# Start the project:
+npx tsx starter/jwt.ts    # Run tests (all will fail initially)
+# Then implement each function in starter/jwt.ts
+```
+
+---
+
 ## What You'll Learn
 
 1. **JWT Structure** - What are the 3 parts of a JWT?
@@ -10,9 +28,11 @@ A minimal JWT implementation for learning purposes. Written in TypeScript with n
 4. **RSA Signing** - Asymmetric cryptography (public/private key pairs)
 5. **Authentication Flows** - Access tokens, refresh tokens, logout
 
-## Quick Start
+## Quick Start (Reference Implementation)
 
 ```bash
+npm install
+
 # Run the examples in order:
 npm run example:basics   # JWT structure & encoding
 npm run example:hmac     # Symmetric signing
