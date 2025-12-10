@@ -10,19 +10,269 @@ A hands-on project to understand JSON Web Tokens, cryptographic signing, and aut
 
 ---
 
-## What You'll Build
+## Part 0: The Big Picture - How Web Authentication Works
 
-By the end of this project, you'll have built a working JWT library from scratch that can:
-- Create and verify tokens using HMAC (symmetric) signing
-- Create and verify tokens using RSA (asymmetric) signing
-- Handle token expiration
-- Detect tampered tokens
+Before diving into code, let's understand what problem we're solving and how all the pieces fit together.
 
-More importantly, you'll deeply understand:
-- Why JWTs are structured the way they are
-- How cryptographic signatures work
-- The difference between symmetric and asymmetric cryptography
-- Common security pitfalls and how to avoid them
+### The Problem: HTTP is Stateless
+
+HTTP doesn't remember anything between requests. When you send a request to a server, it has no idea who you are or if you've logged in before. Every request starts fresh.
+
+```
+Browser                           Server
+   │                                │
+   │──── GET /dashboard ──────────▶│  "Who are you? I don't know you."
+   │                                │
+   │◀─── 401 Unauthorized ─────────│
+```
+
+We need a way to prove our identity on every request without logging in every time.
+
+### Solution 1: Session-Based Auth (The Old Way)
+
+Traditionally, servers stored login state in memory or a database:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        SESSION-BASED AUTH                               │
+└─────────────────────────────────────────────────────────────────────────┘
+
+1. LOGIN
+   Browser                              Server                    Database
+      │                                    │                          │
+      │── POST /login {user, pass} ──────▶│                          │
+      │                                    │── Verify credentials ───▶│
+      │                                    │◀── User valid ───────────│
+      │                                    │                          │
+      │                                    │── Store session ────────▶│
+      │                                    │   {sid: "abc", oderId: 1}      │
+      │                                    │                          │
+      │◀── Set-Cookie: sid=abc ───────────│                          │
+
+2. SUBSEQUENT REQUESTS
+   Browser                              Server                    Database
+      │                                    │                          │
+      │── GET /dashboard ────────────────▶│                          │
+      │   Cookie: sid=abc                  │                          │
+      │                                    │── Lookup session ───────▶│
+      │                                    │◀── {userId: 1} ──────────│
+      │                                    │                          │
+      │◀── 200 OK (dashboard data) ───────│                          │
+```
+
+**Problems with sessions:**
+- Server must store every active session (memory/database)
+- Hard to scale: if you have 10 servers, they all need access to sessions
+- Every request requires a database lookup
+
+### Solution 2: Token-Based Auth with JWTs (The Modern Way)
+
+JWTs flip the model: instead of storing state on the server, we give the client a **signed token** containing their identity.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         TOKEN-BASED AUTH (JWT)                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+1. LOGIN
+   Browser                              Server
+      │                                    │
+      │── POST /login {user, pass} ──────▶│
+      │                                    │── Verify credentials (DB)
+      │                                    │
+      │                                    │── Create JWT:
+      │                                    │   {userId: 1, role: "admin"}
+      │                                    │   + signature
+      │                                    │
+      │◀── {token: "eyJhbG..."} ──────────│  (no session stored!)
+
+2. SUBSEQUENT REQUESTS
+   Browser                              Server
+      │                                    │
+      │── GET /dashboard ────────────────▶│
+      │   Authorization: Bearer eyJhbG...  │
+      │                                    │── Verify signature (no DB!)
+      │                                    │── Read userId from token
+      │                                    │
+      │◀── 200 OK (dashboard data) ───────│
+```
+
+**Why this is better:**
+- **Stateless:** Server stores nothing. Any server can verify the token.
+- **Scalable:** Add more servers without sharing session state.
+- **Fast:** No database lookup needed to verify identity.
+- **Flexible:** Token works across different services/domains.
+
+### What's Inside a JWT?
+
+A JWT is just a JSON object that's been signed. Here's what a decoded one looks like:
+
+```javascript
+// HEADER (metadata)
+{
+  "alg": "HS256",    // Algorithm used to sign
+  "typ": "JWT"       // Type of token
+}
+
+// PAYLOAD (your data)
+{
+  "userId": 123,
+  "username": "alice",
+  "role": "admin",
+  "iat": 1699900000,  // Issued at (Unix timestamp)
+  "exp": 1699903600   // Expires at (Unix timestamp)
+}
+
+// SIGNATURE
+// Created by: HMAC-SHA256(header + "." + payload, secret)
+// This proves the token wasn't tampered with
+```
+
+These three parts are Base64URL-encoded and joined with dots:
+
+```
+eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEyM30.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+```
+
+### The Key Insight: Signatures Prevent Tampering
+
+Why can't a user just change `"role": "user"` to `"role": "admin"` in their token?
+
+Because the signature is created using:
+1. The header and payload content
+2. A secret key only the server knows
+
+If you change *anything* in the payload, the signature won't match, and the server rejects it.
+
+```
+Original token:
+  Payload: {"userId": 123, "role": "user"}
+  Signature: abc123 (created with secret key)
+
+Attacker modifies:
+  Payload: {"userId": 123, "role": "admin"}  ← Changed!
+  Signature: abc123 (still the old signature)
+
+Server verifies:
+  Expected signature for new payload: xyz789
+  Actual signature in token: abc123
+  MISMATCH → Rejected!
+```
+
+### Access Tokens vs Refresh Tokens
+
+In practice, we use two tokens:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    TWO-TOKEN AUTHENTICATION                             │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────┐         ┌──────────────────────┐
+│    ACCESS TOKEN      │         │   REFRESH TOKEN      │
+├──────────────────────┤         ├──────────────────────┤
+│ Short-lived (15 min) │         │ Long-lived (7 days)  │
+│ Sent with every      │         │ Only sent to get     │
+│ API request          │         │ new access tokens    │
+│ Contains user info   │         │ Contains minimal info│
+│ Store in memory      │         │ Store in httpOnly    │
+│ (JavaScript variable)│         │ cookie               │
+└──────────────────────┘         └──────────────────────┘
+
+WHY TWO TOKENS?
+
+If access token is stolen:
+  → Attacker has 15 minutes before it expires
+  → Limited damage
+
+If refresh token is stolen:
+  → It's in an httpOnly cookie (JavaScript can't read it!)
+  → Only works with your domain
+  → Can be revoked server-side
+```
+
+### The Complete Flow
+
+Here's how a real application uses JWTs:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    COMPLETE AUTH FLOW                                   │
+└─────────────────────────────────────────────────────────────────────────┘
+
+    React App                    API Server                    Database
+        │                            │                             │
+   ┌────┴────┐                       │                             │
+   │  LOGIN  │                       │                             │
+   └────┬────┘                       │                             │
+        │                            │                             │
+        │── POST /auth/login ───────▶│                             │
+        │   {email, password}        │── Verify password ─────────▶│
+        │                            │◀── User found ──────────────│
+        │                            │                             │
+        │                            │── Generate tokens:          │
+        │                            │   • Access (15 min)         │
+        │                            │   • Refresh (7 days)        │
+        │                            │                             │
+        │◀── {accessToken} ─────────│                             │
+        │    Set-Cookie: refresh=... │   (httpOnly, secure)        │
+        │                            │                             │
+   ┌────┴────┐                       │                             │
+   │  STORE  │ accessToken           │                             │
+   │   IN    │ in memory             │                             │
+   │ MEMORY  │ (React state)         │                             │
+   └────┬────┘                       │                             │
+        │                            │                             │
+   ┌────┴────┐                       │                             │
+   │  USE    │                       │                             │
+   │  API    │                       │                             │
+   └────┬────┘                       │                             │
+        │                            │                             │
+        │── GET /api/profile ───────▶│                             │
+        │   Authorization: Bearer xxx │── Verify signature         │
+        │                            │── Check not expired         │
+        │                            │── Extract userId            │
+        │                            │                             │
+        │                            │── Fetch user data ─────────▶│
+        │◀── {user data} ───────────│◀────────────────────────────│
+        │                            │                             │
+   ┌────┴────┐                       │                             │
+   │ TOKEN   │ (15 min later...)     │                             │
+   │ EXPIRED │                       │                             │
+   └────┬────┘                       │                             │
+        │                            │                             │
+        │── GET /api/profile ───────▶│                             │
+        │   Authorization: Bearer xxx │── Token expired!           │
+        │◀── 401 Unauthorized ───────│                             │
+        │                            │                             │
+   ┌────┴────┐                       │                             │
+   │ REFRESH │                       │                             │
+   └────┬────┘                       │                             │
+        │                            │                             │
+        │── POST /auth/refresh ─────▶│                             │
+        │   Cookie: refresh=...      │── Verify refresh token      │
+        │                            │── Generate new access token │
+        │◀── {accessToken} ─────────│                             │
+        │                            │                             │
+        │   (retry original request) │                             │
+        │── GET /api/profile ───────▶│                             │
+        │   Authorization: Bearer new │                            │
+        │◀── {user data} ───────────│                             │
+```
+
+### What You'll Build in This Project
+
+1. **The JWT Library (Parts 1-5):** Encode, sign, verify, decode tokens
+2. **Auth Functions (Part 6):** Login, logout, refresh, authorization
+3. **Security Challenges (Part 7):** Try to break your own implementation
+
+Once you understand how JWTs work internally, you'll be able to:
+- Debug authentication issues confidently
+- Understand security vulnerabilities
+- Make informed decisions about token storage and expiration
+- Use production JWT libraries effectively
+
+Let's start building!
 
 ---
 

@@ -2,11 +2,34 @@
 
 A minimal JWT implementation for learning purposes. Written in TypeScript with no external dependencies - just Node.js crypto.
 
+## 🚀 See It In Action
+
+**Want to see JWTs working in a real app?** Check out the demo:
+
+```bash
+# Terminal 1: Start the API server
+cd demo/server && npm install && npm run dev
+
+# Terminal 2: Start the React app
+cd demo/client && npm install && npm run dev
+```
+
+Open http://localhost:5173 and login with `alice@example.com` / `password123`
+
+The demo shows:
+- Login/logout with access + refresh tokens
+- Token expiration countdown & auto-refresh
+- Protected API routes
+- Token storage best practices (memory, not localStorage!)
+
+---
+
 ## 🎓 Build It Yourself
 
 **Want to really understand JWTs?** Don't just read the code—build it yourself!
 
 See **[PROJECT.md](PROJECT.md)** for a guided, hands-on tutorial that walks you through implementing your own JWT library from scratch. Includes:
+- **Part 0:** How web authentication works (sessions vs tokens)
 - Step-by-step exercises with hints
 - Test suite to verify your implementation
 - Security challenges to try breaking your code
