@@ -100,7 +100,7 @@ try {
   console.log('✓ Token verified!');
   console.log('Payload:', JSON.stringify(verified, null, 2));
 } catch (error) {
-  console.log('✗ Verification failed:', error.message);
+  console.log('✗ Verification failed:', (error as Error).message);
 }
 
 console.log('\n--- Trying with wrong public key ---');
@@ -111,7 +111,7 @@ try {
   });
   console.log('✓ Token verified (should not happen!)');
 } catch (error) {
-  console.log('✗ Verification failed:', error.message);
+  console.log('✗ Verification failed:', (error as Error).message);
 }
 
 // ============================================

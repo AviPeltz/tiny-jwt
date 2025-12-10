@@ -89,9 +89,9 @@ console.log('📝 PART 4: Standard JWT Claims\n');
 
 console.log('Our payload automatically got these claims added:');
 console.log(`  iat (Issued At): ${decodedToken.payload.iat}`);
-console.log(`      = ${new Date(decodedToken.payload.iat * 1000).toISOString()}`);
+console.log(`      = ${new Date((decodedToken.payload.iat as number) * 1000).toISOString()}`);
 console.log(`  exp (Expires At): ${decodedToken.payload.exp}`);
-console.log(`      = ${new Date(decodedToken.payload.exp * 1000).toISOString()}`);
+console.log(`      = ${new Date((decodedToken.payload.exp as number) * 1000).toISOString()}`);
 
 console.log('\nOther common claims (not used here):');
 console.log('  sub (Subject)   - Who the token is about');

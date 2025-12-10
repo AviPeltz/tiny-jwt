@@ -11,7 +11,7 @@
  * Run: npm run example:auth
  */
 
-import { createJWT, verifyJWT, decodeJWT } from '../src/index.js';
+import { createJWT, verifyJWT, decodeJWT, type JWTPayload } from '../src/index.js';
 
 console.log('='.repeat(60));
 console.log('COMPLETE AUTHENTICATION FLOW');
@@ -24,20 +24,33 @@ console.log('='.repeat(60));
 const SECRET_KEY = 'your-256-bit-secret-key-here-keep-safe';
 const REFRESH_SECRET = 'different-secret-for-refresh-tokens';
 
+// User type
+interface User {
+  id: number;
+  password: string;
+  role: 'admin' | 'user';
+}
+
 // Simulated user database
-const users = {
+const users: Record<string, User> = {
   'alice': { id: 1, password: 'password123', role: 'admin' },
   'bob': { id: 2, password: 'bobsecret', role: 'user' },
 };
 
+// Token response type
+interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
+}
+
 // Simulated token blacklist (for logout)
-const tokenBlacklist = new Set();
+const tokenBlacklist = new Set<string>();
 
 // ============================================
 // AUTH FUNCTIONS
 // ============================================
 
-function login(username, password) {
+function login(username: string, password: string): TokenPair | null {
   console.log(`\n📥 Login attempt: ${username}`);
 
   const user = users[username];
@@ -67,7 +80,7 @@ function login(username, password) {
   return { accessToken, refreshToken };
 }
 
-function authenticateRequest(token) {
+function authenticateRequest(token: string): JWTPayload {
   // Check if token is blacklisted
   if (tokenBlacklist.has(token)) {
     throw new Error('Token has been revoked');
@@ -78,7 +91,7 @@ function authenticateRequest(token) {
   return payload;
 }
 
-function refreshAccessToken(refreshToken) {
+function refreshAccessToken(refreshToken: string): string {
   console.log('\n🔄 Refreshing access token...');
 
   // Verify refresh token
@@ -95,7 +108,7 @@ function refreshAccessToken(refreshToken) {
   }
 
   // Create new access token
-  const username = Object.keys(users).find(k => users[k].id === user.id);
+  const username = Object.keys(users).find(k => users[k].id === user.id)!;
   const newAccessToken = createJWT(
     { userId: user.id, username, role: user.role },
     SECRET_KEY,
@@ -106,7 +119,7 @@ function refreshAccessToken(refreshToken) {
   return newAccessToken;
 }
 
-function logout(token) {
+function logout(token: string): void {
   console.log('\n🚪 Logging out...');
   tokenBlacklist.add(token);
   console.log('   ✓ Token added to blacklist');
@@ -116,12 +129,23 @@ function logout(token) {
 // PROTECTED ROUTES (Simulated)
 // ============================================
 
-function getProfile(token) {
+interface Profile {
+  id: unknown;
+  username: unknown;
+  role: unknown;
+}
+
+function getProfile(token: string): Profile {
   const user = authenticateRequest(token);
   return { id: user.userId, username: user.username, role: user.role };
 }
 
-function adminOnly(token) {
+interface AdminData {
+  message: string;
+  secretData: string;
+}
+
+function adminOnly(token: string): AdminData {
   const user = authenticateRequest(token);
   if (user.role !== 'admin') {
     throw new Error('Admin access required');
@@ -138,7 +162,7 @@ console.log('📋 SCENARIO 1: Successful Login & API Access');
 console.log('='.repeat(60));
 
 // Step 1: Login
-const aliceTokens = login('alice', 'password123');
+const aliceTokens = login('alice', 'password123')!;
 
 // Step 2: Access protected route
 console.log('\n📡 Accessing /api/profile...');
@@ -147,7 +171,7 @@ try {
   console.log('   ✓ Access granted');
   console.log('   Profile:', profile);
 } catch (error) {
-  console.log('   ✗ Access denied:', error.message);
+  console.log('   ✗ Access denied:', (error as Error).message);
 }
 
 // Step 3: Access admin route
@@ -157,7 +181,7 @@ try {
   console.log('   ✓ Access granted');
   console.log('   Data:', admin);
 } catch (error) {
-  console.log('   ✗ Access denied:', error.message);
+  console.log('   ✗ Access denied:', (error as Error).message);
 }
 
 // ============================================
@@ -168,14 +192,14 @@ console.log('\n' + '='.repeat(60));
 console.log('📋 SCENARIO 2: Non-Admin Tries Admin Route');
 console.log('='.repeat(60));
 
-const bobTokens = login('bob', 'bobsecret');
+const bobTokens = login('bob', 'bobsecret')!;
 
 console.log('\n📡 Bob accessing /api/admin...');
 try {
   const admin = adminOnly(bobTokens.accessToken);
   console.log('   ✓ Access granted:', admin);
 } catch (error) {
-  console.log('   ✗ Access denied:', error.message);
+  console.log('   ✗ Access denied:', (error as Error).message);
 }
 
 // ============================================
@@ -192,7 +216,7 @@ try {
   getProfile(tamperedToken);
   console.log('   ✓ Access granted (SECURITY ISSUE!)');
 } catch (error) {
-  console.log('   ✗ Access denied:', error.message);
+  console.log('   ✗ Access denied:', (error as Error).message);
 }
 
 // ============================================
@@ -212,7 +236,7 @@ try {
   console.log('   ✓ Access granted with new token');
   console.log('   Profile:', profile);
 } catch (error) {
-  console.log('   ✗ Refresh failed:', error.message);
+  console.log('   ✗ Refresh failed:', (error as Error).message);
 }
 
 // ============================================
@@ -230,7 +254,7 @@ try {
   getProfile(aliceTokens.accessToken);
   console.log('   ✓ Access granted (SECURITY ISSUE!)');
 } catch (error) {
-  console.log('   ✗ Access denied:', error.message);
+  console.log('   ✗ Access denied:', (error as Error).message);
 }
 
 // ============================================

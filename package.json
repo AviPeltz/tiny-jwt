@@ -2,15 +2,28 @@
   "name": "tiny-jwt",
   "version": "1.0.0",
   "description": "A learning project to understand JWT, authentication, and cryptographic signing",
-  "main": "src/index.js",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
   "type": "module",
   "scripts": {
-    "example:basics": "node examples/01-jwt-basics.js",
-    "example:hmac": "node examples/02-hmac-signing.js",
-    "example:rsa": "node examples/03-rsa-signing.js",
-    "example:auth": "node examples/04-auth-flow.js"
+    "build": "tsc",
+    "example:basics": "tsx examples/01-jwt-basics.ts",
+    "example:hmac": "tsx examples/02-hmac-signing.ts",
+    "example:rsa": "tsx examples/03-rsa-signing.ts",
+    "example:auth": "tsx examples/04-auth-flow.ts",
+    "typecheck": "tsc --noEmit"
   },
-  "keywords": ["jwt", "authentication", "crypto", "learning"],
+  "keywords": [
+    "jwt",
+    "authentication",
+    "crypto",
+    "learning"
+  ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^25.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
 }

@@ -9,7 +9,7 @@
  * Run: npm run example:hmac
  */
 
-import { createJWT, verifyJWT, signHMAC, verifyHMAC } from '../src/index.js';
+import { createJWT, verifyJWT, signHMAC, verifyHMAC, type JWTPayload } from '../src/index.js';
 
 console.log('='.repeat(60));
 console.log('HMAC SIGNING - Symmetric Key Cryptography');
@@ -88,7 +88,7 @@ try {
   console.log('✓ Token verified successfully!');
   console.log('Payload:', JSON.stringify(verified, null, 2));
 } catch (error) {
-  console.log('✗ Verification failed:', error.message);
+  console.log('✗ Verification failed:', (error as Error).message);
 }
 
 // ============================================
@@ -101,7 +101,7 @@ try {
   verifyJWT(tokenHS256, 'wrong-secret', { algorithms: ['HS256'] });
   console.log('✓ Token verified (this should not happen!)');
 } catch (error) {
-  console.log('✗ Verification failed:', error.message);
+  console.log('✗ Verification failed:', (error as Error).message);
   console.log('\n💡 This is expected! The signature doesn\'t match.');
 }
 
@@ -116,7 +116,7 @@ const parts = tokenHS256.split('.');
 const payloadBase64 = parts[1];
 
 // Decode, modify, re-encode the payload
-const decodedPayload = JSON.parse(
+const decodedPayload: JWTPayload & { userId?: number; permissions?: string[] } = JSON.parse(
   Buffer.from(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString()
 );
 console.log('Original payload:', decodedPayload);
@@ -139,7 +139,7 @@ try {
   verifyJWT(tamperedToken, jwtSecret, { algorithms: ['HS256'] });
   console.log('✓ Tampered token accepted (SECURITY BREACH!)');
 } catch (error) {
-  console.log('✗ Tampered token rejected:', error.message);
+  console.log('✗ Tampered token rejected:', (error as Error).message);
   console.log('\n💡 The signature was created for the ORIGINAL payload.');
   console.log('   When the payload changes, the signature no longer matches!');
 }

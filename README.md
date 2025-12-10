@@ -1,6 +1,6 @@
 # tiny-jwt
 
-A minimal JWT implementation for learning purposes. No dependencies - just Node.js crypto.
+A minimal JWT implementation for learning purposes. Written in TypeScript with no external dependencies - just Node.js crypto.
 
 ## What You'll Learn
 
@@ -125,12 +125,13 @@ Memory variable   ✓ Safest, but lost on refresh
 ```
 tiny-jwt/
 ├── src/
-│   └── index.js         # JWT implementation
+│   └── index.ts          # JWT implementation with types
 ├── examples/
-│   ├── 01-jwt-basics.js # Structure & encoding
-│   ├── 02-hmac-signing.js # Symmetric crypto
-│   ├── 03-rsa-signing.js  # Asymmetric crypto
-│   └── 04-auth-flow.js    # Complete auth system
+│   ├── 01-jwt-basics.ts  # Structure & encoding
+│   ├── 02-hmac-signing.ts # Symmetric crypto
+│   ├── 03-rsa-signing.ts  # Asymmetric crypto
+│   └── 04-auth-flow.ts    # Complete auth system
+├── tsconfig.json
 └── README.md
 ```
 
@@ -138,7 +139,7 @@ tiny-jwt/
 
 ### Creating Tokens
 
-```javascript
+```typescript
 import { createJWT } from './src/index.js';
 
 // HMAC (symmetric)
@@ -149,7 +150,7 @@ const token = createJWT(
 );
 
 // RSA (asymmetric)
-const token = createJWT(
+const rsaToken = createJWT(
   { userId: 123 },
   null,
   { algorithm: 'RS256', privateKey: yourPrivateKey }
@@ -158,7 +159,7 @@ const token = createJWT(
 
 ### Verifying Tokens
 
-```javascript
+```typescript
 import { verifyJWT } from './src/index.js';
 
 // HMAC
@@ -167,7 +168,7 @@ const payload = verifyJWT(token, 'your-secret-key', {
 });
 
 // RSA
-const payload = verifyJWT(token, null, {
+const rsaPayload = verifyJWT(rsaToken, null, {
   publicKey: yourPublicKey,
   algorithms: ['RS256']
 });
@@ -175,7 +176,7 @@ const payload = verifyJWT(token, null, {
 
 ### Decoding (without verification)
 
-```javascript
+```typescript
 import { decodeJWT } from './src/index.js';
 
 // WARNING: Don't trust unverified data!
@@ -184,10 +185,22 @@ const { header, payload, signature } = decodeJWT(token);
 
 ### Key Generation
 
-```javascript
+```typescript
 import { generateRSAKeyPair } from './src/index.js';
 
 const { publicKey, privateKey } = generateRSAKeyPair();
+```
+
+### Types
+
+```typescript
+import type {
+  Algorithm,      // 'HS256' | 'HS384' | 'HS512' | 'RS256' | 'RS384' | 'RS512'
+  JWTHeader,      // { alg: Algorithm; typ: 'JWT' }
+  JWTPayload,     // { iat?, exp?, sub?, iss?, aud?, ... }
+  DecodedJWT,     // { header, payload, signature }
+  RSAKeyPair,     // { publicKey: string; privateKey: string }
+} from './src/index.js';
 ```
 
 ## Common JWT Attacks
