@@ -131,12 +131,15 @@ export function generateRSAKeyPair(): RSAKeyPair {
  * Sign data with RSA private key
  *
  * Use:
- * - crypto.createSign('RSA-SHA256')
+ * - crypto.createSign('RSA-SHA256') for sha256
+ * - crypto.createSign('RSA-SHA384') for sha384
+ * - crypto.createSign('RSA-SHA512') for sha512
  * - .update(data)
  * - .sign(privateKey, 'base64url')
  */
-export function signRSA(data: string, privateKey: string): string {
+export function signRSA(data: string, privateKey: string, algorithm: string = 'sha256'): string {
   // TODO: Implement this
+  // Hint: Map algorithm to OpenSSL names: sha256 -> 'RSA-SHA256', etc.
   throw new Error('Not implemented');
 }
 
@@ -144,13 +147,13 @@ export function signRSA(data: string, privateKey: string): string {
  * Verify RSA signature with public key
  *
  * Use:
- * - crypto.createVerify('RSA-SHA256')
+ * - crypto.createVerify('RSA-SHA256') for sha256 (etc.)
  * - .update(data)
  * - .verify(publicKey, signature, 'base64url')
  *
  * Wrap in try/catch, return false on error
  */
-export function verifyRSA(data: string, signature: string, publicKey: string): boolean {
+export function verifyRSA(data: string, signature: string, publicKey: string, algorithm: string = 'sha256'): boolean {
   // TODO: Implement this
   throw new Error('Not implemented');
 }

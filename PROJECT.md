@@ -6,6 +6,8 @@ A hands-on project to understand JSON Web Tokens, cryptographic signing, and aut
 **Difficulty:** Intermediate
 **Prerequisites:** Basic TypeScript/JavaScript, familiarity with Node.js
 
+> **⚠️ Important:** This is an educational project. **Never use your own cryptographic implementations in production.** Use battle-tested libraries like [jose](https://github.com/panva/jose) instead. The goal here is to understand *how* JWTs work, not to create production-ready code.
+
 ---
 
 ## What You'll Build
@@ -39,6 +41,8 @@ eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEyM30.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh
 **Header:** Metadata about the token (what algorithm was used)
 **Payload:** The actual data (claims) you want to transmit
 **Signature:** Proof that the token hasn't been tampered with
+
+> **Critical:** JWTs are **signed**, not **encrypted**. Anyone can decode and read the payload! The signature only proves the token wasn't modified—it doesn't hide the contents. Never put passwords, credit card numbers, or sensitive data in a JWT.
 
 ### Why Base64URL?
 
@@ -129,11 +133,12 @@ HMAC (Hash-based Message Authentication Code) uses a **single secret key** for b
 ```
 
 **How it works:**
-1. Combine the message with the secret key
-2. Run through a hash function (SHA-256)
-3. The output is a unique "fingerprint" of message + key
-4. Same inputs always produce the same fingerprint
-5. Any change to message OR key = completely different fingerprint
+1. HMAC uses the secret key in a specific way with the hash function (not just concatenation)
+2. It runs: `hash(key XOR opad || hash(key XOR ipad || message))` (simplified)
+3. The output is a unique "fingerprint" that depends on both message and key
+4. Same inputs always produce the same fingerprint (deterministic)
+5. Any change to message OR key = completely different fingerprint (avalanche effect)
+6. Without the key, you cannot forge a valid signature even if you know the algorithm
 
 ### Exercise 2.1: Implement HMAC Signing
 
@@ -797,6 +802,18 @@ An attacker can measure how long verification takes. If the first character matc
 
 **Fix:** Use `crypto.timingSafeEqual()` which always takes the same amount of time.
 
+### Challenge 7.5: The "none" Algorithm
+
+Some JWT libraries historically accepted `alg: "none"`, meaning "trust this token without any signature." An attacker could:
+
+1. Take any valid token
+2. Change the payload to anything they want
+3. Set the header to `{ "alg": "none", "typ": "JWT" }`
+4. Remove the signature entirely
+5. Send: `eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJ1c2VySWQiOjEsImFkbWluIjp0cnVlfQ.`
+
+Does your implementation reject this? It should! Never allow `"none"` as an algorithm.
+
 ---
 
 ## Bonus Challenges
@@ -857,11 +874,33 @@ ECDSA is another asymmetric algorithm that's faster than RSA and produces smalle
 Things we simplified that you'd need in production:
 
 1. **Password Hashing:** Never store plain passwords! Use bcrypt or Argon2.
-2. **Key Rotation:** Secrets should be rotated periodically.
-3. **HTTPS Only:** JWTs should only ever be sent over HTTPS.
-4. **Secure Storage:** Access tokens in memory, refresh tokens in httpOnly cookies.
-5. **Rate Limiting:** Prevent brute force attacks on login.
-6. **Proper Error Messages:** Don't reveal whether username or password was wrong.
+
+2. **HMAC Key Length:** Your secret key should be at least as long as the hash output:
+   - HS256: minimum 32 bytes (256 bits)
+   - HS384: minimum 48 bytes (384 bits)
+   - HS512: minimum 64 bytes (512 bits)
+   Using a short secret like `"secret"` is insecure!
+
+3. **Key Rotation:** Secrets should be rotated periodically. Use a `kid` (Key ID) header to identify which key signed a token.
+
+4. **HTTPS Only:** JWTs should only ever be sent over HTTPS. Over HTTP, anyone can read and steal tokens.
+
+5. **Secure Storage:**
+   - Access tokens: Memory only (never localStorage!)
+   - Refresh tokens: httpOnly, Secure, SameSite cookies
+
+6. **Token Blacklist Scalability:** Our in-memory Set doesn't scale. In production:
+   - Use Redis with TTL matching token expiration
+   - Or store a "token version" per user in the database
+   - Or use short-lived tokens without blacklisting
+
+7. **Clock Skew:** Servers' clocks can differ. Add a small tolerance (e.g., 30 seconds) when checking `exp` and `nbf`.
+
+8. **Rate Limiting:** Prevent brute force attacks on login endpoints.
+
+9. **Proper Error Messages:** Don't reveal whether username or password was wrong—say "Invalid credentials" for both.
+
+10. **The "none" Algorithm Attack:** Some JWT libraries accept `alg: "none"` which means "no signature required." Our implementation doesn't support this, but always be explicit about which algorithms you allow.
 
 ### Libraries to Use in Production
 
