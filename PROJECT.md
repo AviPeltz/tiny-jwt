@@ -1109,6 +1109,164 @@ ECDSA is another asymmetric algorithm that's faster than RSA and produces smalle
 
 ---
 
+## Part 8: Special Case - Desktop & Mobile Apps
+
+### The Problem: Native Apps Can't Keep Secrets
+
+Everything we've learned so far assumes your server can keep secrets safe. But what about **desktop apps** (Electron, Tauri) or **mobile apps** (iOS, Android)?
+
+```
+Web Server (CAN keep secrets):
+┌─────────────────────────────────────┐
+│  Your Server (you control this)     │
+│  ┌─────────────────────────────┐    │
+│  │ SECRET_KEY = "abc123..."    │    │  ← Only you can see this
+│  └─────────────────────────────┘    │
+└─────────────────────────────────────┘
+
+Desktop/Mobile App (CANNOT keep secrets):
+┌─────────────────────────────────────┐
+│  User's Device (they control it!)   │
+│  ┌─────────────────────────────┐    │
+│  │ Your App                    │    │
+│  │ SECRET_KEY = "abc123..."    │    │  ← User can extract this!
+│  └─────────────────────────────┘    │
+└─────────────────────────────────────┘
+```
+
+An attacker can:
+- **Decompile** your app and read the code
+- **Inspect memory** with a debugger
+- **Read Electron's source** (it's just JavaScript!)
+- **Proxy network requests** to see all traffic
+
+**This means you CANNOT use HMAC signing in a desktop app!** If you embed the secret, users can extract it and create their own tokens.
+
+### The Solution: PKCE (Proof Key for Code Exchange)
+
+PKCE (pronounced "pixie") allows secure authentication without embedding secrets:
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                         PKCE FLOW                                          │
+└────────────────────────────────────────────────────────────────────────────┘
+
+   Desktop App                    Auth Server                    Browser
+        │                              │                             │
+        │  1. Generate random          │                             │
+        │     code_verifier (secret)   │                             │
+        │     code_challenge = SHA256(code_verifier)                 │
+        │                              │                             │
+        │──────────────────────────────────────────────────────────▶│
+        │  2. Open browser: /authorize?code_challenge=xxx            │
+        │                              │                             │
+        │                              │◀────────────────────────────│
+        │                              │  3. User logs in            │
+        │                              │                             │
+        │◀─────────────────────────────│                             │
+        │  4. Redirect: myapp://callback?code=yyy                    │
+        │                              │                             │
+        │  5. Exchange code            │                             │
+        │     + code_verifier          │                             │
+        │─────────────────────────────▶│                             │
+        │                              │                             │
+        │                              │── Verify:                   │
+        │                              │   SHA256(code_verifier)     │
+        │                              │   == stored code_challenge  │
+        │                              │                             │
+        │◀─────────────────────────────│                             │
+        │  6. Access + Refresh tokens  │                             │
+```
+
+**How PKCE protects against interception:**
+
+1. App generates a random `code_verifier` (kept in memory)
+2. App computes `code_challenge = SHA256(code_verifier)`
+3. Auth request includes `code_challenge` (hash only!)
+4. Server stores the `code_challenge`
+5. User logs in, server returns `auth_code`
+6. App exchanges `auth_code` + original `code_verifier`
+7. Server verifies: `SHA256(code_verifier) == stored code_challenge`
+8. Only then does server return tokens
+
+**Even if an attacker intercepts the auth code, they don't have the code_verifier!**
+
+### Token Storage in Desktop Apps
+
+Where do you store tokens securely on a user's device?
+
+```
+Platform          │ Secure Storage
+──────────────────┼────────────────────────────────
+Windows           │ Windows Credential Manager (DPAPI)
+macOS             │ Keychain
+Linux             │ libsecret / GNOME Keyring
+iOS               │ Keychain Services
+Android           │ Android Keystore
+Electron          │ safeStorage API (uses OS keychain)
+```
+
+**Never store tokens in:**
+- ❌ Plain text files
+- ❌ localStorage (even in Electron!)
+- ❌ Environment variables
+- ❌ Embedded in code
+
+### Why System Browser?
+
+Notice we open the **system browser**, not an embedded webview:
+
+1. **User trust:** Users can verify the URL is really your auth server
+2. **Password managers:** Work correctly in the system browser
+3. **Existing sessions:** If user is already logged in, they don't need to re-enter credentials
+4. **Security:** Embedded webviews can be manipulated by the app
+
+### Try It Yourself
+
+Check out `demo-electron/` for a complete working example:
+
+```bash
+# Terminal 1: Auth Server
+cd demo-electron/server
+npm install
+npm run dev
+
+# Terminal 2: Electron App
+cd demo-electron/app
+npm install
+npm run dev
+```
+
+The demo shows:
+- PKCE flow implementation
+- Custom protocol handling (`myapp://`)
+- Secure token storage with `safeStorage`
+- System browser authentication
+
+### 🤔 Think About It
+
+1. Why can't we just use the same HMAC approach as web apps?
+2. What happens if someone intercepts the authorization code but doesn't have the code_verifier?
+3. Why do we use the system browser instead of an embedded webview?
+
+<details>
+<summary>Answers</summary>
+
+1. Desktop apps run on user-controlled devices. Any secret embedded in the app can be extracted by decompiling, debugging, or reading the source (Electron apps are just JavaScript!). HMAC requires both sides to have the same secret, so if users can extract it, they can forge tokens.
+
+2. They can't exchange it for tokens! The server requires the `code_verifier` that matches the original `code_challenge`. Without it, the exchange fails. This is the core security of PKCE.
+
+3. System browser advantages:
+   - Users can see the real URL and verify it's legitimate
+   - Password managers work correctly
+   - Existing login sessions are preserved
+   - The app can't inject JavaScript or read the page contents
+   - It's the OAuth 2.0 best practice for native apps
+
+</details>
+
+---
+
 ## Wrapping Up
 
 ### What You've Learned
@@ -1118,6 +1276,7 @@ ECDSA is another asymmetric algorithm that's faster than RSA and produces smalle
 - **RSA Signing:** Asymmetric cryptography with key pairs
 - **Security:** Algorithm confusion, timing attacks, token expiration
 - **Auth Patterns:** Access tokens, refresh tokens, token revocation
+- **Desktop/Mobile Auth:** PKCE flow, secure token storage, why native apps can't keep secrets
 
 ### Real-World Considerations
 

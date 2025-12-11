@@ -22,6 +22,24 @@ The demo shows:
 - Protected API routes
 - Token storage best practices (memory, not localStorage!)
 
+### Desktop App Demo (Electron + PKCE)
+
+Desktop apps can't store secrets! See how to handle auth properly:
+
+```bash
+# Terminal 1: Start the Auth Server
+cd demo-electron/server && npm install && npm run dev
+
+# Terminal 2: Start the Electron App
+cd demo-electron/app && npm install && npm run dev
+```
+
+This demo shows:
+- **PKCE flow** - Secure OAuth without embedded secrets
+- **System browser auth** - Not embedded webviews
+- **OS keychain storage** - Tokens stored securely via `safeStorage`
+- **Custom protocol handling** - `myapp://` redirect
+
 ---
 
 ## 🎓 Build It Yourself
@@ -50,6 +68,7 @@ npx tsx starter/jwt.ts    # Run tests (all will fail initially)
 3. **HMAC Signing** - Symmetric cryptography (one shared secret)
 4. **RSA Signing** - Asymmetric cryptography (public/private key pairs)
 5. **Authentication Flows** - Access tokens, refresh tokens, logout
+6. **Desktop/Mobile Auth** - PKCE flow, why native apps can't keep secrets
 
 ## Quick Start (Reference Implementation)
 

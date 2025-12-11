@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Electron PKCE Auth Demo</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #eee;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 0.5rem;
+      color: #4fc3f7;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #888;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card h2 {
+      color: #4fc3f7;
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+
+    .status.logged-out {
+      background: rgba(255, 107, 107, 0.2);
+      border: 1px solid rgba(255, 107, 107, 0.3);
+    }
+
+    .status.logged-in {
+      background: rgba(102, 187, 106, 0.2);
+      border: 1px solid rgba(102, 187, 106, 0.3);
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .status.logged-out .status-dot {
+      background: #ff6b6b;
+    }
+
+    .status.logged-in .status-dot {
+      background: #66bb6a;
+    }
+
+    button {
+      background: #4fc3f7;
+      color: #1a1a2e;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    button:hover {
+      background: #81d4fa;
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    button.secondary {
+      background: transparent;
+      border: 1px solid #4fc3f7;
+      color: #4fc3f7;
+    }
+
+    button.secondary:hover {
+      background: rgba(79, 195, 247, 0.1);
+    }
+
+    button.danger {
+      background: #ff6b6b;
+    }
+
+    button.danger:hover {
+      background: #ff8a80;
+    }
+
+    .token-display {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 0.85rem;
+      overflow-x: auto;
+      margin-top: 1rem;
+    }
+
+    .token-display pre {
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .token-label {
+      color: #4fc3f7;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+
+    .expiry-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      background: rgba(255, 193, 7, 0.1);
+      border: 1px solid rgba(255, 193, 7, 0.3);
+      border-radius: 8px;
+    }
+
+    .expiry-info.expired {
+      background: rgba(255, 107, 107, 0.1);
+      border: 1px solid rgba(255, 107, 107, 0.3);
+    }
+
+    .api-response {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: rgba(102, 187, 106, 0.1);
+      border: 1px solid rgba(102, 187, 106, 0.3);
+      border-radius: 8px;
+    }
+
+    .api-response.error {
+      background: rgba(255, 107, 107, 0.1);
+      border: 1px solid rgba(255, 107, 107, 0.3);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .flow-diagram {
+      font-family: monospace;
+      font-size: 0.8rem;
+      line-height: 1.4;
+      color: #888;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+
+    .highlight {
+      color: #4fc3f7;
+    }
+
+    .info-box {
+      background: rgba(79, 195, 247, 0.1);
+      border: 1px solid rgba(79, 195, 247, 0.3);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .info-box h3 {
+      color: #4fc3f7;
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+    }
+
+    .loading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Electron PKCE Auth Demo</h1>
+    <p class="subtitle">Desktop App Authentication Done Right</p>
+
+    <!-- Auth Status -->
+    <div class="card">
+      <h2>Authentication Status</h2>
+      <div id="auth-status" class="status logged-out">
+        <div class="status-dot"></div>
+        <span id="status-text">Not logged in</span>
+      </div>
+
+      <div id="logged-out-actions">
+        <button id="login-btn">Login with Browser</button>
+        <p style="margin-top: 1rem; color: #888; font-size: 0.9rem;">
+          Clicking login will open your system browser for authentication.
+          This is more secure than an embedded webview!
+        </p>
+      </div>
+
+      <div id="logged-in-actions" class="hidden">
+        <button id="refresh-btn" class="secondary">Refresh Token</button>
+        <button id="api-btn" class="secondary">Call Protected API</button>
+        <button id="logout-btn" class="danger">Logout</button>
+      </div>
+    </div>
+
+    <!-- Token Info -->
+    <div id="token-card" class="card hidden">
+      <h2>Token Information</h2>
+      <div id="token-info">
+        <!-- Populated by JavaScript -->
+      </div>
+      <div id="expiry-info" class="expiry-info">
+        <span>Expires: <strong id="expiry-time">--</strong></span>
+        <span>(<span id="expiry-countdown">--</span>)</span>
+      </div>
+    </div>
+
+    <!-- API Response -->
+    <div id="api-card" class="card hidden">
+      <h2>API Response</h2>
+      <div id="api-response" class="api-response">
+        <!-- Populated by JavaScript -->
+      </div>
+    </div>
+
+    <!-- Security Info -->
+    <div class="card">
+      <h2>How This Works</h2>
+      <div class="flow-diagram">
+<pre>
+1. <span class="highlight">Click Login</span> → Opens system browser
+2. <span class="highlight">Authenticate</span> → User logs in on auth server
+3. <span class="highlight">Redirect</span> → myapp://auth/callback?code=xxx
+4. <span class="highlight">PKCE Exchange</span> → Code + verifier → Tokens
+5. <span class="highlight">Secure Storage</span> → Tokens in OS keychain
+</pre>
+      </div>
+
+      <div class="info-box">
+        <h3>Why PKCE?</h3>
+        <p>
+          Desktop apps <strong>cannot store secrets</strong> - users can decompile
+          and read your code. PKCE (Proof Key for Code Exchange) allows secure
+          OAuth without embedding secrets. The app generates a random verifier,
+          sends a hash (challenge) with the auth request, then proves it started
+          the flow by sending the original verifier when exchanging the code.
+        </p>
+      </div>
+
+      <div class="info-box">
+        <h3>Why System Browser?</h3>
+        <p>
+          Using the system browser (not an embedded webview) lets users verify
+          they're on the real login page. They can check the URL, see their
+          password manager suggestions, and trust their existing session.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
