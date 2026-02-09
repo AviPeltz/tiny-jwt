@@ -14,11 +14,11 @@ cd demo/server && npm install && npm run dev
 cd demo/client && npm install && npm run dev
 ```
 
-Open http://localhost:5173 and login with `alice@example.com` / `password123`
+Open http://localhost:5173 and log in with `alice@example.com` / `password123`
 
 The demo shows:
-- Login/logout with access + refresh tokens
-- Token expiration countdown & auto-refresh
+- Login/logout with access and refresh tokens
+- Token expiration countdown and auto-refresh
 - Protected API routes
 - Token storage best practices (memory, not localStorage!)
 
@@ -36,7 +36,7 @@ cd demo-electron/app && npm install && npm run dev
 
 This demo shows:
 - **PKCE flow** - Secure OAuth without embedded secrets
-- **System browser auth** - Not embedded webviews
+- **System browser auth** - Not embedded web views
 - **OS keychain storage** - Tokens stored securely via `safeStorage`
 - **Custom protocol handling** - `myapp://` redirect
 
@@ -46,12 +46,12 @@ This demo shows:
 
 **Want to really understand JWTs?** Don't just read the code—build it yourself!
 
-See **[PROJECT.md](PROJECT.md)** for a guided, hands-on tutorial that walks you through implementing your own JWT library from scratch. Includes:
-- **Part 0:** How web authentication works (sessions vs tokens)
+See **[PROJECT.md](PROJECT.md)** for a guided, hands-on tutorial that walks you through implementing your own JWT library from scratch. It includes:
+- **Part 0:** How web authentication works (sessions vs. tokens)
 - Step-by-step exercises with hints
-- Test suite to verify your implementation
+- A test suite to verify your implementation
 - Security challenges to try breaking your code
-- "Think About It" questions to deepen understanding
+- "Think About It" questions to deepen your understanding
 
 ```bash
 # Start the project:
@@ -110,7 +110,7 @@ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEyM30.SflKxwRJSMeKKF2QT4fwpMe
 
 - One secret key for both signing and verifying
 - Both parties must share the same secret
-- Simpler, faster
+- Simpler and faster
 - Good for: single applications, internal APIs
 
 ### RSA (Asymmetric) - RS256, RS384, RS512
@@ -142,12 +142,12 @@ Private Key          Public Key
     │    refresh tokens)  │                       │
     │<────────────────────│                       │
     │                     │                       │
-    │ 3. API Request + JWT│                       │
-    │─────────────────────────────────────────────>
-    │                     │                       │
-    │                     │    4. Verify JWT      │
-    │                     │    (no auth server    │
-    │                     │     call needed!)     │
+│ 3. API Request + JWT│                       │
+│─────────────────────────────────────────────>
+│                     │                       │
+│                     │    4. Verify JWT      │
+│                     │    (no auth server    │
+│                     │     call needed)      │
     │                     │                       │
     │ 5. Response         │                       │
     │<─────────────────────────────────────────────
@@ -267,20 +267,20 @@ import type {
 
 ## Common JWT Attacks
 
-1. **Algorithm Confusion** - Attacker changes RS256 to HS256, uses public key as HMAC secret
+1. **Algorithm Confusion** - Attacker changes RS256 to HS256 and uses the public key as the HMAC secret
    - Prevention: Always specify allowed algorithms in verify()
 
 2. **Token Theft (XSS)** - Attacker steals token from localStorage via JavaScript
    - Prevention: Use httpOnly cookies
 
 3. **Expired Token Reuse** - Using tokens after they should be invalid
-   - Prevention: Always check exp claim, use token blacklists
+   - Prevention: Always check the exp claim and use token blacklists
 
 4. **Signature Stripping** - Setting alg: "none" to skip verification
-   - Prevention: Never allow "none" algorithm
+   - Prevention: Never allow the "none" algorithm
 
 ## Resources
 
-- [JWT.io](https://jwt.io) - Debugger & library list
+- [JWT.io](https://jwt.io) - Debugger and library list
 - [RFC 7519](https://tools.ietf.org/html/rfc7519) - JWT specification
-- [Auth0 JWT Handbook](https://auth0.com/resources/ebooks/jwt-handbook) - Free ebook
+- [Auth0 JWT Handbook](https://auth0.com/resources/ebooks/jwt-handbook) - Free eBook
